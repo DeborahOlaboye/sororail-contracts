@@ -309,6 +309,24 @@ fn claim_is_blocked_before_the_cliff() {
 }
 
 #[test]
+fn claim_at_cliff_boundary_one_second_before() {
+    let f = Fixture::new(true);
+    f.at(START + CLIFF - 1);
+    assert_eq!(f.client.try_claim(), Err(Ok(Error::VestingCliffNotReached)));
+    assert_eq!(f.held(), TOTAL);
+}
+
+#[test]
+fn claim_at_cliff_boundary_exactly_at_cliff() {
+    let f = Fixture::new(true);
+    f.at(START + CLIFF);
+    assert!(f.client.try_claim().is_ok());
+    let claimed = f.token.balance(&f.beneficiary);
+    assert!(claimed > 0);
+    f.assert_conserved();
+}
+
+#[test]
 fn claim_pays_the_vested_portion() {
     let f = Fixture::new(true);
     f.at(START + 500);
@@ -408,6 +426,17 @@ fn revoke_before_the_cliff_returns_everything() {
     assert_eq!(f.token.balance(&f.grantor), grantor_before + TOTAL);
     assert_eq!(f.held(), 0);
     // Nothing ever vested, so there is nothing to claim.
+    assert_eq!(f.client.try_claim(), Err(Ok(Error::VestingCliffNotReached)));
+    f.assert_conserved();
+}
+
+#[test]
+fn claim_after_revoke_before_cliff_reflects_revoked_state() {
+    let f = Fixture::new(true);
+    f.client.revoke();
+    assert_eq!(f.held(), 0);
+    // After revoke before cliff, effective time is frozen at revoked_at.
+    // Calling claim should return VestingCliffNotReached because nothing was ever vested.
     assert_eq!(f.client.try_claim(), Err(Ok(Error::VestingCliffNotReached)));
     f.assert_conserved();
 }

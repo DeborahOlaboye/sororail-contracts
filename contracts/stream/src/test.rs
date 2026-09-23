@@ -319,11 +319,17 @@ fn withdraw_rejects_when_nothing_has_accrued() {
     // Still at `start`; nothing accrued.
     assert_eq!(f.client.try_withdraw(&None), Err(Ok(Error::InvalidAmount)));
     assert_eq!(
-        f.client.try_withdraw(&Some(0)),
+        f.client.try_withdraw(&Some(-1)),
         Err(Ok(Error::InvalidAmount))
     );
+}
+
+#[test]
+fn withdraw_explicit_some_zero_is_distinct_from_none() {
+    let f = Fixture::new(true);
+    // `Some(0)` flows through `unwrap_or` untouched into `require_positive`.
     assert_eq!(
-        f.client.try_withdraw(&Some(-1)),
+        f.client.try_withdraw(&Some(0)),
         Err(Ok(Error::InvalidAmount))
     );
 }

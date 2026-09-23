@@ -288,6 +288,29 @@ fn charge_fails_once_the_payer_revokes_the_allowance() {
 }
 
 #[test]
+fn charge_fails_when_allowance_covers_fewer_periods_than_remain() {
+    // When max_periods is exactly N and we try to charge N+1, the charge fails.
+    // The contract saves state before calling transfer_from, so periods_charged
+    // must rollback to N to preserve the invariant.
+    let f = Fixture::new(Some(2));
+
+    // Charge succeeds at period 1.
+    f.at(START + PERIOD);
+    assert_eq!(f.client.charge(), AMOUNT);
+    assert_eq!(f.client.get().periods_charged, 1);
+
+    // Charge succeeds at period 2.
+    f.at(START + PERIOD * 2);
+    assert_eq!(f.client.charge(), AMOUNT);
+    assert_eq!(f.client.get().periods_charged, 2);
+
+    // Charge N+1 fails; periods_charged stays at 2 (rollback).
+    f.at(START + PERIOD * 3);
+    assert!(f.client.try_charge().is_err());
+    assert_eq!(f.client.get().periods_charged, 2);
+}
+
+#[test]
 #[should_panic]
 fn charge_requires_the_payees_authorization() {
     let f = Fixture::new(None);
